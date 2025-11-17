@@ -1,5 +1,5 @@
 <?php
-// /auth/login.php - Handles Credentials Auth (Initiate or Verify Code)
+// /auth/login.php - Handles SMS Code Login (Initiate or Verify Code)
 
 require_once '../autoloader.php';
 
@@ -10,58 +10,66 @@ if (getRequestMethod() !== 'POST') {
 $input = getJsonInput();
 $db = new Database();
 
-$email = $input['email'] ?? null;
+$phone = $input['phone'] ?? null;
 $code = $input['code'] ?? null;
 $origin = $input['origin'] ?? null; 
 
-if (!$email || !$origin) {
-    sendErrorResponse('Missing required fields (email or origin).');
+if (!$phone || !$origin) {
+    sendErrorResponse('Missing required fields (phone or origin).');
 }
 
-$user = findUserByEmail($db, $email);
+$user = findUserByPhone($db, $phone);
 
 if (!$user) {
-    // Return generic error for security
-    sendErrorResponse('Invalid credentials.', 401); 
+    sendErrorResponse('Account not found.', 404); 
 }
 
-// --- Step 1: Initiate Login (Send Code) ---
+// --- Scenario 1: Initiate Login / Resend Code ---
 if (!$code) {
-    $verification_code = random_int(100000, 999999); 
+    // Rate Limiting Logic (check if code was sent recently, e.g., last 60 seconds)
+    $last_code_sent = strtotime($user['code_sent_at'] ?? 0);
+    if (time() - $last_code_sent < 60) {
+        sendErrorResponse('Please wait a minute before requesting another code.', 429); // 429 Too Many Requests
+    }
     
-    // Store the code and its expiration time (10 minutes)
+    // Generate new code, update DB, and send SMS
+    $verification_code = random_int(1000, 9999); 
+    $code_expiry = time() + (60 * 5); // 5 minutes from now
+
+    // Update the DB with the new code, expiry, and timestamp for rate limiting
     $db->query("
         UPDATE users SET 
         verification_code = :code, 
-        code_expiry = DATE_ADD(NOW(), INTERVAL 10 MINUTE) 
-        WHERE email = :email
+        code_expiry = FROM_UNIXTIME(:expiry),
+        code_sent_at = NOW()
+        WHERE phone = :phone
     ");
     $db->bind(':code', $verification_code);
-    $db->bind(':email', $email);
+    $db->bind(':expiry', $code_expiry);
+    $db->bind(':phone', $phone);
     $db->execute();
     
-    if (!sendVerificationCodeEmail($email, $verification_code)) {
-        sendErrorResponse('Failed to send verification code. Please check your email address.', 500);
+    if (!sendTwilioSMS($phone, $verification_code)) {
+        sendErrorResponse('Failed to send SMS verification code.', 500);
     }
     
     sendJsonResponse([
         'success' => true,
         'message' => 'Verification code sent successfully.'
     ], 200);
-
 } 
-// --- Step 2: Complete Login (Verify Code) ---
+// --- Scenario 2: Complete Login (Verify Code) ---
 else {
     $code_expiry_timestamp = strtotime($user['code_expiry'] ?? 0);
 
     // Check code validity and expiration
-    if ($user['verification_code'] != $code || $code_expiry_timestamp < time()) {
-        // Clear the invalid code immediately to prevent brute-force
-        $db->query("UPDATE users SET verification_code = NULL, code_expiry = NULL WHERE email = :email");
-        $db->bind(':email', $email);
-        $db->execute();
-        
-        sendErrorResponse('Invalid or expired verification code.', 401);
+    if ($user['verification_code'] != $code) {
+        // Do NOT clear the code, as it's reusable (but increment a failed attempt counter if needed)
+        sendErrorResponse('Invalid verification code.', 401);
+    }
+    
+    if ($code_expiry_timestamp < time()) {
+        sendErrorResponse('Expired verification code.', 401);
     }
     
     // Code verified: Process successful login
