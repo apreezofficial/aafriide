@@ -1,7 +1,7 @@
 <?php
-// /helpers/functions.php (Updated with Auth Helpers)
+// /helpers/functions.php - Complete and Correct
 
-// --- Existing Utility Functions (sendJsonResponse, getRequestMethod, etc.) ---
+// --- CORE UTILITY FUNCTIONS ---
 
 /**
  * Sends a structured JSON response and terminates script execution.
@@ -45,7 +45,7 @@ function getJsonInput() {
 }
 
 
-// --- NEW AUTH HELPER FUNCTIONS ---
+// --- AUTH HELPER FUNCTIONS ---
 
 /**
  * Finds a user by email using the Database class.
@@ -65,7 +65,7 @@ function findUserByEmail(Database $db, $email) {
  * @return bool
  */
 function isNewUser($user) {
-    // Assuming 'onboarding_done' is a column in the users table (0 or 1)
+    // A user is new if the 'onboarding_done' flag is not set or is false (0).
     return empty($user['onboarding_done']);
 }
 
@@ -78,12 +78,11 @@ function isNewUser($user) {
  * @return string The generated token string.
  */
 function generateAndStoreToken(Database $db, $userId, $type, $origin) {
-    // Generate a secure, unique token (e.g., 64-character hex string)
+    // Generate a secure, unique 64-character token
     $token = bin2hex(random_bytes(32)); 
     $expiry = time() + (60 * 60 * 24 * 7); // 7 days expiration
 
-    // Store the token and its hash (always store hash in production for security)
-    // For simplicity here, we'll store the plain token, but HASHING IS VITAL.
+    // Store the token and its details in the tokens table
     $db->query("
         INSERT INTO tokens (user_id, token, type, origin, expires_at, created_at)
         VALUES (:user_id, :token, :type, :origin, FROM_UNIXTIME(:expires_at), NOW())
@@ -117,8 +116,53 @@ function handleSuccessfulLogin(Database $db, $user, $origin) {
     return [
         'success' => true,
         'token' => $token,
-        // new_user attribute sent to frontend (as requested in the flow)
         'new_user' => isNewUser($user), 
         'onboarding_done' => (bool)$user['onboarding_done']
     ];
+}
+
+/**
+ * Sends the verification code to the user's email.
+ * 🚨 IMPORTANT: Replace this placeholder with your actual email service integration (e.g., SendGrid, Mailgun).
+ * @param string $email
+ * @param int $code
+ * @return bool True on success, false on failure.
+ */
+function sendVerificationCodeEmail($email, $code) {
+    // Placeholder implementation (ALWAYS replace this!)
+    error_log("Verification Code SENT to $email: $code"); 
+    // In a real application, you must return the result of your mailer API call.
+    return true; 
+}
+
+/**
+ * Verifies the Google ID token and fetches user information using cURL.
+ * Requires the GOOGLE_CLIENT_ID constant to be defined in /config/secrets.php.
+ * @param string $token
+ * @return array|false Verified user info or false on failure.
+ */
+function verifyGoogleToken($token) {
+    $url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . $token;
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($http_code !== 200) {
+        return false;
+    }
+
+    $userInfo = json_decode($response, true);
+    
+    // Check if the token is for your app
+    if (empty($userInfo['email']) || !defined('GOOGLE_CLIENT_ID') || $userInfo['aud'] !== GOOGLE_CLIENT_ID) {
+        return false;
+    }
+
+    return $userInfo;
 }
