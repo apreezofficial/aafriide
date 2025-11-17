@@ -1,5 +1,5 @@
 <?php
-// /auth/login.php
+// /auth/login.php - Handles Credentials Auth (Initiate or Verify Code)
 
 require_once '../autoloader.php';
 
@@ -21,13 +21,12 @@ if (!$email || !$origin) {
 $user = findUserByEmail($db, $email);
 
 if (!$user) {
-    // For security, don't confirm user existence.
+    // Return generic error for security
     sendErrorResponse('Invalid credentials.', 401); 
 }
 
 // --- Step 1: Initiate Login (Send Code) ---
 if (!$code) {
-    // Generate a 6-digit verification code
     $verification_code = random_int(100000, 999999); 
     
     // Store the code and its expiration time (10 minutes)
@@ -41,8 +40,9 @@ if (!$code) {
     $db->bind(':email', $email);
     $db->execute();
     
-    // Placeholder: Send the code via email/SMS here
-    // sendVerificationCode($email, $verification_code); 
+    if (!sendVerificationCodeEmail($email, $verification_code)) {
+        sendErrorResponse('Failed to send verification code. Please check your email address.', 500);
+    }
     
     sendJsonResponse([
         'success' => true,
@@ -52,11 +52,11 @@ if (!$code) {
 } 
 // --- Step 2: Complete Login (Verify Code) ---
 else {
-    // Check code validity and expiration
     $code_expiry_timestamp = strtotime($user['code_expiry'] ?? 0);
 
+    // Check code validity and expiration
     if ($user['verification_code'] != $code || $code_expiry_timestamp < time()) {
-        // Clear the invalid code immediately
+        // Clear the invalid code immediately to prevent brute-force
         $db->query("UPDATE users SET verification_code = NULL, code_expiry = NULL WHERE email = :email");
         $db->bind(':email', $email);
         $db->execute();
