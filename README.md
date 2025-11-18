@@ -1,108 +1,50 @@
-# **Riding App Authentication API**
-
-<p align="center">
-  <a href="https://php.net" target="_blank">
-    <img src="https://img.shields.io/badge/PHP-7.4%2B-blue.svg?style=for-the-badge&logo=php" alt="PHP Version">
-  </a>
-  <a href="https://dev.mysql.com/doc/" target="_blank">
-    <img src="https://img.shields.io/badge/MySQL-DB-orange.svg?style=for-the-badge&logo=mysql" alt="MySQL Database">
-  </a>
-  <a href="https://www.twilio.com/" target="_blank">
-    <img src="https://img.shields.io/badge/Twilio-SMS-red.svg?style=for-the-badge&logo=twilio" alt="Twilio SMS">
-  </a>
-  <a href="https://developers.google.com/identity/one-tap/web/overview" target="_blank">
-    <img src="https://img.shields.io/badge/Google-OAuth-green.svg?style=for-the-badge&logo=google" alt="Google OAuth">
-  </a>
-</p>
-
-This project provides a robust and secure authentication API backend, meticulously engineered to handle user registration, login, and session management for a modern riding application. It leverages PHP for backend logic, integrates with Google OAuth for social logins, and utilizes Twilio for reliable SMS-based verification, ensuring a seamless and secure user experience.
+# SecureRide API: Robust User Authentication & Management System
 
 ## Overview
-This PHP-based backend implements core authentication functionalities, including user registration and login via SMS verification and Google OAuth. It manages user sessions through token-based authentication and integrates with a MySQL database for data persistence.
+This project provides a robust PHP backend API for secure user authentication and management. It implements comprehensive registration, login, and password reset flows, leveraging Twilio for SMS-based verification and Google OAuth for seamless social login integration. The system uses a custom architecture with PDO for secure database interactions and token-based session management.
 
 ## Features
-- **SMS Code Authentication**: Users can register and log in using a secure 4-digit verification code sent to their phone via Twilio.
-- **Google OAuth Integration**: Supports seamless registration and login through Google accounts, simplifying the onboarding process.
-- **Token-based Session Management**: Securely handles user sessions with dynamically generated access tokens, ensuring authenticated API access.
-- **User Account Management**: Manages basic user profiles, including phone, email, and onboarding status.
-- **Rate Limiting**: Implements a basic rate-limiting mechanism for SMS code requests to prevent abuse.
-- **Database Persistence**: Stores user and token data securely in a MySQL database.
+- **PHP**: Core language for all backend API logic.
+- **PDO**: Provides a secure and efficient layer for database abstraction and interaction.
+- **Twilio SMS Integration**: Enables two-factor authentication via SMS for registration, login, and password reset.
+- **Google OAuth 2.0**: Supports direct user registration and login through Google accounts.
+- **Token-Based Authentication**: Manages user sessions securely using Bearer tokens with defined expiration.
+- **Password Hashing**: Stores user passwords securely using `password_hash()` with `PASSWORD_DEFAULT` algorithm.
+- **Rate Limiting**: Implements basic rate limiting for SMS code requests to prevent abuse.
+- **Structured API Endpoints**: Clearly defined endpoints for various authentication operations.
 
 ## Getting Started
-### Installation
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/riding-app-auth.git
-    cd riding-app-auth
-    ```
-2.  **Set up your PHP environment:** Ensure you have PHP 7.4+ installed and a web server (Apache, Nginx, or PHP's built-in server for development).
-3.  **Configure Database:**
-    *   Create a MySQL database.
-    *   You will need to implement a `Database` class (e.g., using PDO) in `db/Database.php` that handles connections and queries, consistent with how it's called in `autoloader.php` and `helpers/functions.php`.
-    *   Create a `users` table and a `tokens` table with appropriate schemas. A basic schema might look like this:
-        ```sql
-        CREATE TABLE users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            phone VARCHAR(20) UNIQUE,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            first_name VARCHAR(100),
-            last_name VARCHAR(100),
-            verification_code VARCHAR(10),
-            code_expiry DATETIME,
-            code_sent_at DATETIME,
-            onboarding_done TINYINT(1) DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE tokens (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            token VARCHAR(255) UNIQUE NOT NULL,
-            type VARCHAR(50) NOT NULL,
-            origin VARCHAR(50),
-            expires_at DATETIME NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-        ```
-4.  **Place the project files:**
-    *   Place the `auth`, `config`, `helpers` directories and `autoloader.php` at the root of your web server's document `www` directory, or configure your web server to point to this project as its root.
-    *   For example, if you configure Nginx/Apache to serve requests for `/auth/*` from the `auth/` directory, the endpoints will be accessible.
 
 ### Environment Variables
-Edit `config/database.php` and `config/secrets.php` with your credentials:
+To run this project, you will need to configure the following environment variables. It is recommended to create a `.env` file or directly configure them in `config/database.php` and `config/secrets.php` for development purposes. For production, use secure environment variable management.
 
-*   **`config/database.php`**:
-    ```php
-    define('DB_HOST', 'localhost'); // Your database host
-    define('DB_USER', 'your_db_user'); // Your database username
-    define('DB_PASS', 'your_db_password'); // Your database password
-    define('DB_NAME', 'your_database_name'); // Your database name
-    define('DB_CHARSET', 'utf8mb4');
-    ```
-
-*   **`config/secrets.php`**:
-    ```php
-    define('TWILIO_SID', 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'); // Your Twilio Account SID
-    define('TWILIO_TOKEN', 'your_twilio_auth_token'); // Your Twilio Auth Token
-    define('TWILIO_PHONE', '+15017122661'); // Your Twilio phone number (E.164 format)
-    define('GOOGLE_CLIENT_ID', 'YOUR-GOOGLE-OAUTH-CLIENT-ID.apps.googleusercontent.com'); // Your Google OAuth Client ID
-    ```
+*   `DB_HOST`: `localhost` (e.g., `localhost` or your database host)
+*   `DB_USER`: `your_db_user` (e.g., `root`)
+*   `DB_PASS`: `your_db_password` (e.g., `secretpassword`)
+*   `DB_NAME`: `your_database_name` (e.g., `secureride_db`)
+*   `DB_CHARSET`: `utf8mb4` (Database character set)
+*   `TWILIO_SID`: `ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX` (Your Twilio Account SID)
+*   `TWILIO_TOKEN`: `your_twilio_auth_token` (Your Twilio Auth Token)
+*   `TWILIO_PHONE`: `+15017122661` (Your Twilio phone number in E.164 format)
+*   `GOOGLE_CLIENT_ID`: `YOUR-GOOGLE-OAUTH-CLIENT-ID.apps.googleusercontent.com` (Your Google OAuth Client ID)
 
 ## API Documentation
+
 ### Base URL
-Assuming the project files are served under a base path, the authentication endpoints would typically be accessed via: `https://your-api-domain.com/auth/`
+All endpoints are relative to the server root where the `auth` directory is hosted. For example, if your server serves the project from `http://localhost/`, then `/auth/register.php` would be `http://localhost/auth/register.php`.
 
 ### Endpoints
-#### `POST /auth/register.php`
-Registers a new user account by phone and email, then initiates SMS verification.
+
+#### POST /auth/register.php?action=create
+Registers a new user account with email, phone, and password.
 
 **Request**:
 ```json
 {
-  "phone": "+12345678900",
-  "email": "user@example.com"
+  "phone": "08012345678",
+  "email": "user@example.com",
+  "password": "StrongPassword123",
+  "confirm_password": "StrongPassword123"
 }
 ```
 
@@ -110,45 +52,142 @@ Registers a new user account by phone and email, then initiates SMS verification
 ```json
 {
   "success": true,
-  "message": "Registration successful. 4-digit code sent to your phone for verification."
+  "message": "Registration successful. 4-digit code sent to your phone for confirmation."
 }
 ```
 
 **Errors**:
-- `400 Bad Request`: Missing required fields (e.g., `phone` or `email`).
-- `405 Method Not Allowed`: Request method is not POST.
-- `409 Conflict`: An account already exists with the provided phone number.
-- `500 Internal Server Error`: Server error during registration or failure to send SMS verification.
+- `400 Bad Request`: Missing required fields or passwords do not match.
+- `409 Conflict`: Account already exists with the provided email or phone number.
+- `500 Internal Server Error`: Server error during registration.
 
-#### `POST /auth/login.php`
-Handles both initiating SMS code login and verifying the code to complete login.
+#### POST /auth/register.php?action=confirm
+Confirms a newly registered account using a verification code sent to the user's phone.
 
-**Request (Initiate/Resend Code)**:
+**Request**:
 ```json
 {
-  "phone": "+12345678900",
+  "phone": "08012345678",
+  "code": "1234"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Account successfully confirmed. Proceed to login."
+}
+```
+
+**Errors**:
+- `400 Bad Request`: Phone number or confirmation code is missing.
+- `404 Not Found`: Account not found for the provided phone number.
+- `401 Unauthorized`: Invalid or expired confirmation code.
+
+#### POST /auth/register.php?action=resend
+Requests a new confirmation code to be sent to the user's phone for an unconfirmed account.
+
+**Request**:
+```json
+{
+  "phone": "08012345678"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "New confirmation code sent."
+}
+```
+
+**Errors**:
+- `400 Bad Request`: Phone number is missing.
+- `404 Not Found`: Account not found for the provided phone number.
+- `429 Too Many Requests`: Please wait a minute before requesting another code.
+- `500 Internal Server Error`: Failed to send SMS verification code.
+
+#### POST /auth/register.php?action=reset_code
+Initiates the password reset process by sending a verification code to the user's phone.
+
+**Request**:
+```json
+{
+  "phone": "08012345678"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Password reset code sent to your phone."
+}
+```
+
+**Errors**:
+- `400 Bad Request`: Phone number is missing.
+- `404 Not Found`: Account not found for the provided phone number.
+- `429 Too Many Requests`: Please wait a minute before requesting another code.
+- `500 Internal Server Error`: Failed to send password reset code.
+
+#### POST /auth/register.php?action=reset_finalize
+Finalizes the password reset process by verifying the code and setting a new password.
+
+**Request**:
+```json
+{
+  "phone": "08012345678",
+  "code": "5678",
+  "new_password": "NewStrongPassword123",
+  "confirm_password": "NewStrongPassword123"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Password successfully reset."
+}
+```
+
+**Errors**:
+- `400 Bad Request`: Missing required fields or new passwords do not match.
+- `404 Not Found`: Account not found for the provided phone number.
+- `401 Unauthorized`: Invalid or expired reset code.
+
+#### POST /auth/login.php
+Handles SMS code-based login. This endpoint can either initiate the login process by sending a code or complete it by verifying a provided code.
+
+**Request**:
+*To initiate/resend code:*
+```json
+{
+  "phone": "08012345678",
+  "origin": "web"
+}
+```
+*To verify code and complete login:*
+```json
+{
+  "phone": "08012345678",
+  "code": "9101",
   "origin": "web"
 }
 ```
 
-**Response (Initiate/Resend Code)**:
+**Response**:
+*After initiating/resending code:*
 ```json
 {
   "success": true,
   "message": "Verification code sent successfully."
 }
 ```
-
-**Request (Verify Code)**:
-```json
-{
-  "phone": "+12345678900",
-  "code": "1234",
-  "origin": "app"
-}
-```
-
-**Response (Verify Code)**:
+*After verifying code and successful login:*
 ```json
 {
   "success": true,
@@ -159,15 +198,14 @@ Handles both initiating SMS code login and verifying the code to complete login.
 ```
 
 **Errors**:
-- `400 Bad Request`: Missing required fields (e.g., `phone` or `origin`).
-- `401 Unauthorized`: Invalid or expired verification code.
+- `400 Bad Request`: Missing required fields (`phone` or `origin`).
 - `404 Not Found`: Account not found for the provided phone number.
-- `405 Method Not Allowed`: Request method is not POST.
-- `429 Too Many Requests`: Please wait before requesting another verification code.
-- `500 Internal Server Error`: Failed to send SMS verification code.
+- `429 Too Many Requests`: Please wait a minute before requesting another code (when initiating).
+- `500 Internal Server Error`: Failed to send SMS verification code (when initiating).
+- `401 Unauthorized`: Invalid or expired verification code (when verifying).
 
-#### `POST /auth/google.php`
-Allows users to log in or register using their Google account via an ID token.
+#### POST /auth/google.php
+Authenticates or registers a user via Google OAuth 2.0.
 
 **Request**:
 ```json
@@ -181,25 +219,23 @@ Allows users to log in or register using their Google account via an ID token.
 ```json
 {
   "success": true,
-  "token": "f6e5d4c3b2a1...",
+  "token": "a1b2c3d4e5f6...",
   "new_user": true,
   "onboarding_done": false
 }
 ```
 
 **Errors**:
-- `400 Bad Request`: Missing required fields (e.g., `google_id_token` or `origin`).
+- `405 Method Not Allowed`: Only POST requests are supported.
+- `400 Bad Request`: Missing `google_id_token` or `origin`.
 - `401 Unauthorized`: Invalid or expired Google token.
-- `405 Method Not Allowed`: Request method is not POST.
 
-#### `POST /auth/logout.php`
-Invalidates the provided access token, effectively logging the user out.
+#### POST /auth/logout.php
+Invalidates the current session token, effectively logging out the user.
 
 **Request**:
-```
-Header: Authorization: Bearer YOUR_ACCESS_TOKEN
-```
-*(No request body for this endpoint)*
+Headers:
+`Authorization: Bearer YOUR_AUTH_TOKEN`
 
 **Response**:
 ```json
@@ -210,30 +246,108 @@ Header: Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
 **Errors**:
-- `401 Unauthorized`: Token missing or invalid Authorization header format.
-- `405 Method Not Allowed`: Request method is not POST.
+- `405 Method Not Allowed`: Only POST requests are supported.
+- `401 Unauthorized`: Token missing from Authorization header.
+
+---
+
+## Usage
+To interact with the SecureRide API, you can use any HTTP client like `curl`, Postman, or integrate directly from your client-side application. Below are examples using `curl`.
+
+**1. Register a New User**
+
+```bash
+curl -X POST \
+  http://localhost/auth/register.php?action=create \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "phone": "08012345678",
+        "email": "jane.doe@example.com",
+        "password": "MySuperSecretPassword123",
+        "confirm_password": "MySuperSecretPassword123"
+      }'
+```
+
+**2. Confirm Account with SMS Code**
+
+```bash
+curl -X POST \
+  http://localhost/auth/register.php?action=confirm \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "phone": "08012345678",
+        "code": "1234" 
+      }'
+```
+
+**3. Initiate SMS Login**
+
+```bash
+curl -X POST \
+  http://localhost/auth/login.php \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "phone": "08012345678",
+        "origin": "web"
+      }'
+```
+
+**4. Complete SMS Login with Code**
+
+```bash
+curl -X POST \
+  http://localhost/auth/login.php \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "phone": "08012345678",
+        "code": "9101", 
+        "origin": "web"
+      }'
+```
+
+**5. Login with Google OAuth**
+
+```bash
+curl -X POST \
+  http://localhost/auth/google.php \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "google_id_token": "YOUR_ACTUAL_GOOGLE_ID_TOKEN",
+        "origin": "web"
+      }'
+```
+
+**6. Logout (Invalidate Token)**
+
+```bash
+curl -X POST \
+  http://localhost/auth/logout.php \
+  -H 'Authorization: Bearer YOUR_AUTHENTICATION_TOKEN'
+```
 
 ## Technologies Used
 
-| Technology | Category       | Description                                              | Link                                            |
-| :--------- | :------------- | :------------------------------------------------------- | :---------------------------------------------- |
-| PHP        | Backend Language | Core scripting language for server-side logic.           | [php.net](https://php.net)                      |
-| MySQL      | Database       | Relational database for storing user and token data.     | [mysql.com](https://www.mysql.com/)             |
-| Twilio     | SMS Service    | API for sending SMS verification codes.                  | [twilio.com](https://www.twilio.com/)           |
-| Google OAuth | Authentication | Secure user authentication and authorization service.    | [developers.google.com/identity](https://developers.google.com/identity) |
-| cURL       | HTTP Client    | Used for making external HTTP requests (e.g., to Twilio). | [php.net/manual/en/book.curl.php](https://www.php.net/manual/en/book.curl.php) |
+| Technology         | Description                                        | Link                                                    |
+| :----------------- | :------------------------------------------------- | :------------------------------------------------------ |
+| PHP                | Server-side scripting language                     | [php.net](https://www.php.net/)                         |
+| MySQL / PostgreSQL | Relational Database Management System (via PDO)    | [mysql.com](https://www.mysql.com/) / [postgresql.org](https://www.postgresql.org/) |
+| PDO                | PHP Data Objects - Database access abstraction     | [php.net/manual/en/book.pdo.php](https://www.php.net/manual/en/book.pdo.php) |
+| Twilio             | Cloud communications platform for SMS messaging    | [twilio.com](https://www.twilio.com/)                   |
+| Google OAuth       | Secure authorization framework for Google services | [developers.google.com/identity/protocols/oauth2](https://developers.google.com/identity/protocols/oauth2) |
+| cURL               | Command-line tool and library for transferring data with URLs | [curl.se](https://curl.se/)                             |
+
 
 ## License
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
 
 ## Author Info
-
-Connect with the developer behind this project:
-
-*   **Portfolio**: [your-portfolio.com](https://your-portfolio.com)
-*   **LinkedIn**: [linkedin.com/in/your-linkedin-username](https://linkedin.com/in/your-linkedin-username)
-*   **Twitter**: [@your_twitter_handle](https://twitter.com/your_twitter_handle)
+**Your Name Here**
+*   LinkedIn: [Your LinkedIn Profile](https://linkedin.com/in/yourprofile)
+*   Twitter: [@yourtwitterhandle](https://twitter.com/yourtwitterhandle)
 
 ---
 
+[![PHP](https://img.shields.io/badge/Language-PHP-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
+[![Database](https://img.shields.io/badge/Database-MySQL/PostgreSQL-00758F?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Readme was generated by Dokugen](https://img.shields.io/badge/Readme%20was%20generated%20by-Dokugen-brightgreen)](https://www.npmjs.com/package/dokugen)
