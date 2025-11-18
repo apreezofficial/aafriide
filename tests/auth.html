@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test Client (Auth System)</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 20px; color: #333; }
+        label { display: block; margin: 10px 0 3px; font-weight: bold; font-size: 0.9em; }
+        input[type="text"], input[type="password"] { width: calc(100% - 22px); padding: 8px; margin-bottom: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px; margin-top: 5px; transition: background-color 0.3s; }
+        button:hover { background-color: #0056b3; }
+        #response { margin-top: 20px; padding: 15px; background-color: #e9ecef; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; font-size: 0.8em; }
+        .token-display { font-weight: bold; color: green; }
+        .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
+        .section-grid > div { border: 1px solid #ddd; padding: 15px; border-radius: 6px; }
+        .token-container { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Riding App Auth Tester</h1>
+
+        <div class="token-container">
+            Current Bearer Token: <span id="current-token" class="token-display">None</span>
+        </div>
+
+        <p>Base URL set to: <code>https://meet.page.gd/aafriide-testing/auth/</code></p>
+        
+        <hr>
+
+        <div class="section-grid">
+            
+            <div>
+                <h2>1. Account Creation (`register.php?action=create`)</h2>
+                <label for="reg-phone">Phone (E.164):</label>
+                <input type="text" id="reg-phone" value="+2348011223344">
+                <label for="reg-email">Email:</label>
+                <input type="text" id="reg-email" value="testuser@example.com">
+                <label for="reg-password">Password:</label>
+                <input type="password" id="reg-password" value="password123">
+                <label for="reg-confirm-password">Confirm Password:</label>
+                <input type="password" id="reg-confirm-password" value="password123">
+                <button onclick="registerUser()">Sign Up / Create Account</button>
+                
+                <hr>
+
+                <h2>2. Confirmation (`register.php?action=confirm`)</h2>
+                <label for="confirm-phone">Phone (from Step 1):</label>
+                <input type="text" id="confirm-phone" value="+2348011223344">
+                <label for="confirm-code">Code (4-Digit SMS):</label>
+                <input type="text" id="confirm-code" placeholder="Enter SMS code">
+                <button onclick="confirmUser()">Confirm Account</button>
+                <button onclick="resendCode()">Resend Code</button>
+            </div>
+
+            <div>
+                <h2>3. Log In (`login.php`)</h2>
+                <label for="login-credential">Phone/Email:</label>
+                <input type="text" id="login-credential" value="+2348011223344">
+                <label for="login-password">Password:</label>
+                <input type="password" id="login-password" value="password123">
+                <label for="login-origin">Origin:</label>
+                <input type="text" id="login-origin" value="app" disabled>
+                <button onclick="loginUser()">Log In</button>
+                
+                <hr>
+
+                <h2>4. Password Reset (`register.php?action=reset_...`)</h2>
+                <label for="reset-phone">Phone:</label>
+                <input type="text" id="reset-phone" value="+2348011223344">
+                <label for="reset-code">Code:</label>
+                <input type="text" id="reset-code" placeholder="Reset Code">
+                <label for="new-password">New Password:</label>
+                <input type="password" id="new-password" value="newpass123">
+                <label for="new-confirm-password">Confirm New Password:</label>
+                <input type="password" id="new-confirm-password" value="newpass123">
+                
+                <button onclick="requestResetCode()">Request Reset Code</button>
+                <button onclick="finalizeReset()">Finalize Reset</button>
+                
+                <hr>
+
+                <h2>5. Log Out (`logout.php`)</h2>
+                <button onclick="logoutUser()">Log Out</button>
+            </div>
+        </div>
+
+        <hr>
+
+        <h2>API Response</h2>
+        <pre id="response">Waiting for a request...</pre>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const BASE_URL_PATH = "/aafriide-testing/auth/";
+        const BASE_URL = window.location.origin + BASE_URL_PATH;
+        let GLOBAL_TOKEN = '';
+
+        // --- UTILITY FUNCTIONS ---
+
+        function updateTokenDisplay(token) {
+            GLOBAL_TOKEN = token;
+            const tokenElement = document.getElementById('current-token');
+            if (token) {
+                tokenElement.textContent = token.substring(0, 8) + '... (Click Logout to clear)';
+                tokenElement.style.color = 'green';
+            } else {
+                tokenElement.textContent = 'None';
+                tokenElement.style.color = 'red';
+            }
+        }
+
+        async function fetchAPI(endpoint, data, method = 'POST') {
+            document.getElementById('response').textContent = `Sending request to: ${BASE_URL}${endpoint}`;
+            
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+
+            if (GLOBAL_TOKEN) {
+                headers['Authorization'] = `Bearer ${GLOBAL_TOKEN}`;
+            }
+
+            try {
+                const response = await fetch(BASE_URL + endpoint, {
+                    method: method,
+                    headers: headers,
+                    body: data ? JSON.stringify(data) : null,
+                });
+
+                const responseText = await response.text();
+                
+                try {
+                    const jsonResponse = JSON.parse(responseText);
+                    document.getElementById('response').textContent = JSON.stringify(jsonResponse, null, 2);
+                    return jsonResponse;
+                } catch (e) {
+                    document.getElementById('response').textContent = `⚠️ Non-JSON Response (Check server path/errors):\n\n${responseText}`;
+                    return null;
+                }
+
+            } catch (error) {
+                document.getElementById('response').textContent = `❌ Fetch Error: ${error.message}`;
+                return null;
+            }
+        }
+
+        // --- AUTH ACTION FUNCTIONS ---
+
+        async function registerUser() {
+            const data = {
+                phone: document.getElementById('reg-phone').value,
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-password').value,
+                confirm_password: document.getElementById('reg-confirm-password').value,
+            };
+            await fetchAPI('register.php?action=create', data);
+        }
+
+        async function confirmUser() {
+            const data = {
+                phone: document.getElementById('confirm-phone').value,
+                code: document.getElementById('confirm-code').value,
+            };
+            await fetchAPI('register.php?action=confirm', data);
+        }
+        
+        async function resendCode() {
+            const data = {
+                phone: document.getElementById('confirm-phone').value,
+            };
+            await fetchAPI('register.php?action=resend', data);
+        }
+
+        async function loginUser() {
+            const data = {
+                credential: document.getElementById('login-credential').value,
+                password: document.getElementById('login-password').value,
+                origin: document.getElementById('login-origin').value
+            };
+
+            const result = await fetchAPI('login.php', data);
+
+            if (result && result.success) {
+                updateTokenDisplay(result.token);
+            } else if (result && result.error) {
+                updateTokenDisplay('');
+            }
+        }
+        
+        async function requestResetCode() {
+            const data = {
+                phone: document.getElementById('reset-phone').value,
+            };
+            await fetchAPI('register.php?action=reset_code', data);
+        }
+
+        async function finalizeReset() {
+            const data = {
+                phone: document.getElementById('reset-phone').value,
+                code: document.getElementById('reset-code').value,
+                new_password: document.getElementById('new-password').value,
+                confirm_password: document.getElementById('new-confirm-password').value,
+            };
+            await fetchAPI('register.php?action=reset_finalize', data);
+        }
+
+        async function logoutUser() {
+            const result = await fetchAPI('logout.php', null, 'POST');
+
+            if (result && result.success) {
+                updateTokenDisplay('');
+            }
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Sync default values for easy testing
+            const phone = document.getElementById('reg-phone').value;
+            document.getElementById('login-credential').value = phone;
+            document.getElementById('confirm-phone').value = phone;
+            document.getElementById('reset-phone').value = phone;
+        });
+    </script>
+</body>
+</html>
